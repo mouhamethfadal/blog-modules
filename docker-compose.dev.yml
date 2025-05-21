@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - blog-network
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mongosh", "admin", "--host", "localhost", "--port", "27017", "-u", "root", "-p", "passer", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile.dev
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./config-server:/app
+      - config_server_maven_repo:/root/.m2
+    networks:
+      - blog-network
+    environment:
+      CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT}
+      CONFIG_SERVER_USERNAME: ${CONFIG_SERVER_USERNAME}
+      CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+      CONFIG_REPO_URI: ${CONFIG_REPO_URI}
+      GIT_USERNAME: ${GIT_USERNAME}
+      GIT_PASSWORD: ${GIT_PASSWORD}
+      CONFIG_DEFAULT_LABEL: ${CONFIG_DEFAULT_LABEL}
+      CONFIG_SEARCH_PATHS: ${CONFIG_SEARCH_PATHS}
+      SPRING_PROFILES_ACTIVE: dev
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  blog-backend:
+    build:
+      context: ./blog-backend
+      dockerfile: Dockerfile.dev
+    container_name: blog-backend
+    ports:
+      - "8080:8080"
+      - "5005:5005"
+    volumes:
+      - ./blog-backend:/app
+      - blog_backend_maven_repo:/root/.m2
+    networks:
+      - blog-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    environment:
+      BLOG_BACKEND_PORT: ${BLOG_BACKEND_PORT}
+      CONFIG_SERVER_URL: ${CONFIG_SERVER_URL}
+      CONFIG_SERVER_USERNAME: ${CONFIG_SERVER_USERNAME}
+      CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+      MONGODB_DEV_URI: ${MONGODB_DEV_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      SPRING_PROFILES_ACTIVE: dev
+networks:
+  blog-network:
+    driver: bridge
+volumes:
+  mongodb_data:
+    name: mongodb_data
+    driver: local
+  config_server_maven_repo:
+    name: config_server_maven_repo
+    driver: local
+  blog_backend_maven_repo:
+    name: blog_backend_maven_repo
+    driver: local
