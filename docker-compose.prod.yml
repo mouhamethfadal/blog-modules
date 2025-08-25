@@ -2,32 +2,24 @@ services:
   mongodb:
     image: mongo:latest
     container_name: mongodb
-    ports:
-      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-      - ./init-mongodb-dev.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    networks:
-      - blog-network
+      - ./init-mongodb-prod.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: blogdev
+      MONGO_INITDB_DATABASE: blogprod
     healthcheck:
-      test: ["CMD", "sh", "-c", "mongosh admin --host localhost --port 27017 -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")'"]
+      test: [ "CMD", "sh", "-c", "mongosh admin --host localhost --port 27017 -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")'" ]
       interval: 10s
       timeout: 5s
       retries: 5
   config-server:
-    build:
-      context: ./config-server
-      dockerfile: Dockerfile.dev
-    image: config-server
+    image: ${DOCKERHUB_USERNAME}/blog-config-server:latest
     container_name: config-server
     restart: unless-stopped
     volumes:
-      - ./config-server:/app
       - config_server_maven_repo:/root/.m2
     networks:
       - blog-network
@@ -47,15 +39,9 @@ services:
       timeout: 5s
       retries: 5
   blog-backend:
-    build:
-      context: ./blog-backend
-      dockerfile: Dockerfile.dev
-    image: blog-backend
+    image: ${DOCKERHUB_USERNAME}/blog-backend:latest
     restart: unless-stopped
-    ports:
-      - "5005:5005"
     volumes:
-      - ./blog-backend:/app
       - blog_backend_maven_repo:/root/.m2
     networks:
       - blog-network
@@ -74,7 +60,7 @@ services:
       JWT_EXPIRATION: ${JWT_EXPIRATION}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -98,6 +84,12 @@ networks:
     name: blog-network
     driver: bridge
 volumes:
+  caddy_data:
+    name: caddy_data
+    driver: local
+  caddy_config:
+    name: caddy_config
+    driver: local
   mongodb_data:
     name: mongodb_data
     driver: local
@@ -106,10 +98,4 @@ volumes:
     driver: local
   blog_backend_maven_repo:
     name: blog_backend_maven_repo
-    driver: local
-  caddy_data:
-    name: caddy_data
-    driver: local
-  caddy_config:
-    name: caddy_config
     driver: local
