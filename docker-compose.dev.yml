@@ -16,9 +16,9 @@ services:
       MONGO_INITDB_DATABASE: blogdev
     healthcheck:
       test: ["CMD", "sh", "-c", "mongosh admin --host localhost --port 27017 -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 20
   config-server:
     build:
       context: ./config-server
@@ -43,9 +43,9 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 20
   blog-backend:
     build:
       context: ./blog-backend
@@ -75,9 +75,9 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 30
   caddy:
     image: caddy:2
     container_name: caddy
@@ -86,13 +86,14 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
     networks:
       - blog-network
     depends_on:
-      - blog-backend
+      blog-backend:
+        condition: service_healthy
 networks:
   blog-network:
     name: blog-network
