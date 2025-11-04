@@ -1,4 +1,4 @@
-http://blog.localhost {
+blog.localhost {
     reverse_proxy blog-backend:8080 {
         lb_policy round_robin
     }

@@ -35,3 +35,7 @@ build/
 ### Environment Variables ###
 .env.*
 !.env.template
+
+### modules
+blog-*
+config-server
