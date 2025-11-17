@@ -54,7 +54,7 @@ services:
     image: blog-backend
     restart: unless-stopped
     ports:
-      - "5005:5005"
+      - "${BLOG_BACKEND_DEBUG_PORT}:${BLOG_BACKEND_DEBUG_PORT}"
     volumes:
       - ./blog-backend:/app
       - blog_backend_maven_repo:/root/.m2
